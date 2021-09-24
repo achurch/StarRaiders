@@ -1836,11 +1836,10 @@ A62D F0 06   		BEQ	ASERV2		; YES
 ! The attack computer's auto-tracking mode automatically switches between
 ! front and aft view to follow the currently tracked object; we see this
 ! logic implemented here by simulating a keypress of the appropriate key
-! (F or A) when the sign of the object's position changes.
-! [FIXME: is the below accurate?]
-!  This causes
-! any actual keyboard input on such a frame to be dropped, since keyboard
-! input was already read (in the call to KEYSRV above).
+! (F or A) when the sign of the object's position changes.  It seems
+! likely that this would cause any actual keyboard input on such a frame
+! to be dropped, since keyboard input was already read (in the call to
+! KEYSRV above).
 A62F AA      		TAX
 A630 BD CF BE		LDA	TRKTAB,X		; WHICH KEY FOR SWITHING DISPLAY
 A633 85 CA   		STA	THEKEY		; SWITCH DISPLAY
@@ -3377,9 +3376,13 @@ AE85 9D 38 0B		STA	ZPOSL+3,X
 AE88 A9 01   		LDA	#$01
 AE8A 9D B0 09		STA	XSIGN+3,X
 AE8D 9D D6 0A		STA	XPOSL+3,X
-! This odd instruction sequence causes photon torpedoes to travel slightly
-! faster (speed $76 instead of $66) if fired when the sector scan view is
-! displayed.  The intent of this is unclear.
+! This instruction sequence inverts the X velocity of photon torpedoes if
+! fired in aft view, so the torpedo correctly travels in the direction the
+! player is looking.  (As a side effect, torpedoes fired while in the
+! sector scan view travel slightly faster than normal, at speed $76 rather
+! than $66.  This side effect was presumably considered a reasonable
+! compromise for being able to conditionally negate the velocity with this
+! concise instruction sequence.)
 AE90 A5 D0   		LDA	DISFLG
 AE92 4A      		LSR	A
 AE93 6A      		ROR	A
