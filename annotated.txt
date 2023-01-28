@@ -19,9 +19,9 @@
 ! independently reverse-engineered and extensively documented disassembly
 ! created by Lorenz Wiest, found at:
 !    https://github.com/lwiest/StarRaiders/blob/master/StarRaiders.source.asm.txt
-! (though note that this version uses a different coordinate system than
-! the original program).  The annotations in this file are intended to
-! serve more as observations on the procedure and techniques used and
+! (though note that Lorenz's version uses a different coordinate system
+! than the original program).  The annotations in this file are intended
+! to serve more as observations on the procedure and techniques used and
 ! considerations involved in creating the program, rather than a complete
 ! guide to its behavior.
 !
@@ -2506,9 +2506,9 @@ A98D A9 10   		LDA	#STLAST
 A98F 85 79   		STA	NSTARS
 A991 A9 00   		LDA	#$00
 A993 85 C1   		STA	HISPED
-! A couple of interesting comments here suggesting bugs that were found
-! during development; the logic for handling explosions may have
-! interfered with hyperwarp processing.
+! A couple of interesting comments here hint at bugs found during
+! development; the logic for handling explosions may have interfered with
+! hyperwarp processing.
 A995 85 73   		STA	ETIMER		; KEEP PROGRAM FROM GOING SOUTH
 A997 85 8A   		STA	HITME		; CLEAR THE OTHER EXPLOS BUG
 A999 8D 8F 0C		STA	GINDEX+3
@@ -2932,7 +2932,7 @@ ABE5 A9 0F   		LDA	#$0F
 !    - BSTRAF[Y] == 1 and XPOSH[Y] >= 256-11, or
 !    - BSTRAF[Y] == 1 and XPOSH[Y] < 256-11 and XSIGN[Y] == 1.
 ! (The latter three conditions are effectively equivalent to the C
-! expression "BSTRAF[Y] ? XPOS[Y] >= -0x1100 ? XPOS[Y] >= +0x1000".)
+! expression "BSTRAF[Y] ? XPOS[Y] >= -0x1100 : XPOS[Y] >= +0x1000".)
 ! The end result is to set {X,Y,Z}INDES[Y] to $F (maximum negative
 ! acceleration) under the conditions above, or 0 (maximum positive
 ! acceleration) otherwise.
@@ -3045,7 +3045,7 @@ AC73         	EXPLS1
 ! subtracted after rather than before the division by 2; however, these
 ! values will just be overwritten on the next update cycle, so this bug
 ! has little effect other than a single frame of excessively spread-out
-! epxlosion particles when the explosion occurs.  Since EXHELP copies the
+! explosion particles when the explosion occurs.  Since EXHELP copies the
 ! explosion origin coordinates directly to the particle coordinates with
 ! no random offset, the correct behavior may have been to omit the random
 ! offset here as well (or simply perform an extra call to CALCVH, though
@@ -3470,8 +3470,8 @@ AEF5 AA      		TAX
 AEF6 BD 92 09		LDA	DAMAGE,X
 AEF9 0A      		ASL	A
 AEFA 30 EB   		BMI	DAMCT2
-! If the torpedo is within the last half-second of its lifetime, it only
-! damages the target system.
+! If the torpedo is within the last half-second of its lifetime (meaning
+! that it was fired from far away), it only damages the target system.
 AEFC A5 EB   		LDA	STFLAG+2
 AEFE C9 1E   		CMP	#30
 AF00 A9 80   		LDA	#$80
@@ -3529,11 +3529,11 @@ AF4C B5 82   		LDA	PHITS+0,X		; ANY HIT ?
 ! starbase).
 AF4E 29 07   		AND	#$07		; LOOK AT 0,1 ONLY
 AF50 F0 ED   		BEQ	HITZY2		; NO HIT
-! This instruction sequence converts the hit bitmask into the index of
-! the hit object.  If only one bit is set, this is straightforward; if
-! multiple bits are set, the precedence order is 1 > 2 > 0 (this order
-! is presumably just the result of the instruction sequence chosen here
-! rather than a deliberate design decision).
+! This instruction sequence converts the hit bitmask into the index of the
+! hit object.  If only one bit is set, this is straightforward; if multiple
+! bits are set, the precedence order is 1 > 2 > 0 (this order is presumably
+! just a coincidental result of the instruction sequence chosen here rather
+! than a deliberate design decision).
 AF52 4A      		LSR	A		; 0 OR 1 ONLY
 AF53 C9 03   		CMP	#$03
 AF55 D0 01   		BNE	HITZY9
@@ -3571,8 +3571,10 @@ AF84 38      		SEC
 AF85 A9 FF   		LDA	#$FF
 AF87 F5 EC   		SBC	STFLAG+3,X
 ! The explosion sound is delayed by the amount of time the torpedo has
-! already been active, possibly to simulate sound wave travel time
-! (though of course, sound waves do not travel in the vacuum of space).
+! already been active, possibly to simulate sound wave travel time.
+! Of course, sound waves do not travel in the vacuum of space, but this
+! provides players with an aural cue as to the distance of the destroyed
+! object.
 AF89 85 E2   		STA	EXPDEL		; AUDIO
 ! "Zylon basestar" ships are documented in the manual as being harder to
 ! hit.  This logic implements that feature by preventing an enemy basestar
@@ -4381,9 +4383,9 @@ B401 69 64   		ADC	#SCBCD
 B403 85 6A   		STA	TEMP
 B405 A5 6B   		LDA	TEMP1
 B407 9D E9 0E		STA	BCDCON,X
-! Here we see a rare use of the 6502 decimal flag to set up the BCD
-! conversion table; the high (integral) byte of this 2-byte counter is
-! incremented in decimal mode so its two nibbles can be directly used
+! Here we see a rare use of the 6502 "decimal mode" flag to set up the
+! BCD conversion table; the high (integral) byte of this 2-byte counter
+! is incremented in decimal mode so its two nibbles can be used directly
 ! as digits for display.  (Decimal mode was so rarely used that some
 ! implementations of the 6502 architecture, notably the Ricoh 2A03 used
 ! in the Nintendo Famicom and NES systems, omitted it entirely.)
@@ -4617,7 +4619,7 @@ B54C A2 04   		LDX	#$04
 B54E         	TIMER2
 B54E FE A3 09		INC	DSDATE,X
 B551 BD A3 09		LDA	DSDATE,X
-! The $DA is the equivalent to ASCII $3A ('9'+1) with color code $C0, so
+! $DA is the equivalent to ASCII $3A ('9'+1) with color code $C0, so
 ! this test checks for decimal carry.
 B554 C9 DA   		CMP	#$DA
 B556 90 0D   		BCC	TIMER3
@@ -4910,11 +4912,11 @@ B69B         	ROHELP
 ! (The randomness applied to the low bits of the first input value may be
 ! an attempt to mask this inaccuracy.)
 !
-! On input, X and Y give the offsets from XSIGN/XPOSH/XPOSL to the two
-! coordinates involved in the computation; one will be an X coordinate,
-! and the other, which is updated by the routine, will be either a Y or a
-! Z coordinate (thus with an offset of RAMNUM or RAMNUM*2, respectively,
-! from the X coordinate).
+! On input, X and Y hold the offsets from the XSIGN/XPOSH/XPOSL labels to
+! the two coordinates involved in the computation; one will be an X
+! coordinate, and the other, which is updated by the routine, will be
+! either a Y or a Z coordinate (thus with an offset of RAMNUM or RAMNUM*2,
+! respectively, from the X coordinate).
 !
 ! This subroutine is called twice per coordinate, with the X and Y
 ! register values reversed for the second call.  While the original value
@@ -5368,6 +5370,8 @@ B8DE 60      		RTS
              	;
              	;
              	;
+! The program code ends here; the remainder of the source code is data
+! definitions.
 
 
              	;		TABLES;
@@ -6646,7 +6650,10 @@ BFF9 01 04
 ! missing a late-added change, or conversely that a change was added at
 ! this point after review of the printed code.  (However, this byte would
 ! not be accessed as part of the PHOTB4 table, so its presence appears to
-! have no effect on the program in any case.)
+! have no effect on the program in any case.)  Alternatively, the $07 byte
+! could just have been uninitialized data left in the final ROM image, if
+! one takes the "01 Blank" comment as referring to the fact that there is
+! 1 byte of unused space here before the 4-byte cartridge trailer below.
 BFFB         	PHASE5
              	;
              	;
