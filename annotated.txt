@@ -37,8 +37,8 @@
 ! additional spaces before the source code lines.  However, this
 ! transcription is intended to reproduce the listing itself rather than
 ! the format in which it was printed; for this reason, this listing omits
-! the 5 leading spaces as irrelevant, and trims the width of prefix to 16
-! columns in order to preserve the positioning of what were almost
+! the 5 leading spaces as irrelevant, and trims the width of the prefix to
+! 16 columns in order to preserve the positioning of what were almost
 ! certainly entered as tabs in the original source code.)
 !
 ! The original listing included a symbol table at the end of the file,
@@ -78,9 +78,9 @@
 ! did not support lowercase at all, resulting in source code such as this
 ! written completely in uppercase.
              	;		NOTES
-! All Atari 400/800 systems came with at least 8k (8192 bytes) of RAM,
+! All Atari 400/800 systems included at least 8k (8KiB = 8192 bytes) of RAM
 ! mapped to the beginning of the 64k address range supported by the Atari
-! CPU (a MOS 6502).
+! CPU (a MOS 6502), as indicated by this comment.
              	;	RAM	0-1FFF
 ! Atari cartridges had their ROM contents mapped into this 8k address
 ! range.  (By implication, the entire program had to fit within 8188 bytes
@@ -145,8 +145,9 @@
              	;
              	;
 ! The terminology under "TYPE" may reflect the design course of the Atari
-! 400/800 hardware as a derivative of the earlier Atari 2600 system.  In
-! particular, "PLAY." may be short for "playfield", the 20-bit register
+! 400/800 hardware as a derivative of the earlier Atari 2600 system
+! (originally called the Atari VCS, short for Video Computer System).
+! In particular, "PLAY." may be short for "playfield", the 20-bit register
 ! used in the Atari 2600 to draw background graphics in place of the
 ! framebuffer RAM which was deemed too costly to include in that system.
              	;	STRRAM MEMORY DEFINED	   STRRAM+	TYPE	NOTES
@@ -524,7 +525,7 @@ D20E         	IRQEN	=	POKEY+14
 D20F         	SKCTL	=	POKEY+15
              	;
 ! "CTIA", short for "Color Television Interface Adapter", controls the
-! display of graphics (as its name suggests) along with handling object
+! display of graphics (as its name suggests) and also handles object
 ! collision detection and joystick trigger button input.  As with POKEY,
 ! the CTIA overlays different read and write behaviors onto the same
 ! 32-byte address space; here, the write registers are listed first,
@@ -612,8 +613,9 @@ D40F         	NMIST	=	ANTIC+15
 ! to the corresponding pins in the joystick connector, such that each bit
 ! read from a joystick register gives the actual physical state of that
 ! input when the register is read.  The PIA also manages peripheral
-! devices such as the cassette recorder, and some cassette games with
-! multi-stage loaders would use this to start and stop cassette loading.
+! devices such as the Atari 410 cassette recorder, and some cassette games
+! with multi-stage loaders would use this functionality to start and stop
+! cassette loading.
 D300         	PIA	=	$D300
 D300         	PORTA	=	PIA+0
 D301         	PORTB	=	PIA+1
@@ -632,7 +634,7 @@ E000         	ALPHA	=	$E000
 ! Here we have declarations of various constants specific to this program.
              	;			EQUATES
 ! The DISPLY symbol referenced in the following lines is defined at the
-! very end of the source code, as part of the non-zero-page memory map.
+! end of the source code, as part of the non-zero-page memory map.
 0282         		DISPL1	=	DISPLY+2		; LDISP
 028F         		DISPL2	=	DISPLY+15		; LDISP
 02DF         		DISPL3	=	DISPLY+95		; LDISP
@@ -892,10 +894,13 @@ A172         	INIT5
 A172 9D 00 D3		STA	PIA,X
 ! This is a hack to encode a store to a zero-page address as an absolute
 ! (16-bit address) store, by manually entering the machine code into the
-! instruction stream.  Normally, this store instruction would be encoded
-! using the zero-page (8-bit) addressing mode, causing the store address
-! to wrap around and clobber OS data at the beginning of RAM as the loop
-! counter advanced.
+! instruction stream.  Because the value of PAGE0 is less than 256, the
+! instruction "STA PAGE0,X" would normally be encoded using the zero-page
+! (8-bit) addressing mode, causing the store address to wrap around and
+! clobber OS data at the beginning of RAM as the loop counter advanced.
+! Modern assemblers typically provide alternate instruction names or
+! suffixes to allow the programmer to select a specific encoding without
+! resorting to this kind of hack.
 A175 9D      		.BYTE	$9D		; STA ABS,X
 A176 67 00   		.WORD	PAGE0		; STA PAGE0,X  (ABSOLUTE)
 A178 E8      		INX
@@ -910,7 +915,7 @@ A17D D8      		CLD
 A17E A9 02   		LDA	#RAMMAP/256
 A180 20 0F AE		JSR	CLRMP1		; CLEAR ALL RAM
              	;		LD VECTOR RAM
-! The 6502 is a purely 8-bit processor, so storing an address requires two
+! The 6502 is an 8-bit processor, so storing an address requires two
 ! separate load/store pairs.
 A183 A9 51   		LDA	#IRQVEC
 A185 8D 16 02		STA	VIMIRQ
@@ -1021,6 +1026,11 @@ A1F3         	MAIN
              	;
              	;
 A1F3 A5 67   		LDA	PROGST
+! "NIM" here is a typo for "NMI", the non-maskable interrupt sent at the
+! beginning of the vertical blank ("VBLANK") period between display frames.
+! Game programs of this era typically used the vertical blank interrupt as
+! their primary timing signal, and even modern games often measure time in
+! units of "frames drawn".
 A1F5 F0 FC   		BEQ	MAIN			; WAIT FOR VBLANK NIM
 A1F7 A9 00   		LDA	#$00			; RESET VBLANK STATUS REGISTER
 A1F9 85 67   		STA	PROGST
@@ -1305,16 +1315,17 @@ A385 85 6D   		STA	TEMP3
 A387 A4 79   		LDY	NSTARS		; LAST BYTE OF STARS
 A389         	YROTA2
 A389 84 6E   		STY	TEMP4		; TEMP STORE
-! The 6502 only has instructions for add/subtract with carry, perhaps to
-! simplify the hardware implementation, so to implement a simple
-! (carryless) addition, the program must first clear the carry flag with
-! CLC (or set it with SEC if subtracting); this CLC/ADC or SEC/SBC pairing
-! is a well-known characteristic of 6502 programs.  It can also reveal
-! something of a stylistic signature of the programmer: we see here (and
-! throughout the code) that the author of this program generally chose to
-! clear or set the carry flag before loading the first operand, thus the
-! sequence CLC/TYA/ADC here, while in other programs one may see the CLC
-! bound more tightly to the ADC, giving a sequence like TYA/CLC/ADC.
+! The 6502's only has add/subsract instructions which include the carry
+! bit, perhaps to simplify the hardware implementation or to reserve opcode
+! space for future processor versions, so to implement a simple (carryless)
+! addition, the program must first clear the carry flag with CLC if adding
+! or set it with SEC if subtracting; this CLC/ADC or SEC/SBC pairing is a
+! well-known characteristic of 6502 programs.  It can also reveal something
+! of a stylistic signature of the programmer: we see here (and throughout
+! the code) that the author of this program generally chose to clear or
+! set the carry flag before loading the first operand, thus the sequence
+! CLC/TYA/ADC here, while in other programs one may see the CLC bound more
+! tightly to the ADC, giving a sequence like TYA/CLC/ADC.
 A38B 18      		CLC
 A38C 98      		TYA
 A38D AA      		TAX
@@ -2311,7 +2322,7 @@ A863 90 33   		BCC	UPINS1
 A865 C9 85   		CMP	#133
 A867 B0 2F   		BCS	UPINS1
 ! The inset window has been laid out so that these 4-pixel-wide tick marks
-! are aligned to a multiple of 4 pixels and can thus each drawn with a
+! are aligned to a multiple of 4 pixels and can thus each be drawn with a
 ! single byte store to the framebuffer.
 A869 A9 AA   		LDA	#$AA
 A86B 8D FE 1B		STA	ICON2
@@ -3463,10 +3474,10 @@ AEF3 B0 47   		BCS	DAMCT1
 AEF5 AA      		TAX
 ! If the selected system is already damaged or destroyed, repeat the
 ! random check.  (This implies that a system which is damaged cannot then
-! be destroyed by another hit later.  This could also potentially lead to
+! be destroyed by another hit later.  This could also theoretically lead to
 ! an infinite loop depending on the state of the random number generator,
-! but it seems at least unlikely enough that such a case never occurred
-! during testing.)
+! though such an occurrence seems extremely unlikely if not impossible in
+! practice.)
 AEF6 BD 92 09		LDA	DAMAGE,X
 AEF9 0A      		ASL	A
 AEFA 30 EB   		BMI	DAMCT2
