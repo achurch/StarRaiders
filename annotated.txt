@@ -138,6 +138,15 @@
              	;
              	;
              	;
+! This refers to the handling of keyboard input.  The hardware register
+! recording the most recently pressed key (KBCODE) includes the current
+! state of the Shift ($40) and Control ($80) keys along with the scancode
+! of the most recently pressed key in the low 6 bits.  This note indicates
+! that the Shift and Control bits are manually set in the value read from
+! KBCODE, presumably so that accidentally holding a Shift or Control key
+! doesn't interfere with normal keyboard control; this also allows a zero
+! value in the "last key pressed" variable (THEKEY) to indicate "no key
+! pressed" without needing special handling for scancode 0 (the L key).
              	;	KEYCODE IS ORED WITH $C0
              	;
              	;
@@ -1847,10 +1856,12 @@ A62D F0 06   		BEQ	ASERV2		; YES
 ! The attack computer's auto-tracking mode automatically switches between
 ! front and aft view to follow the currently tracked object; we see this
 ! logic implemented here by simulating a keypress of the appropriate key
-! (F or A) when the sign of the object's position changes.  It seems
-! likely that this would cause any actual keyboard input on such a frame
-! to be dropped, since keyboard input was already read (in the call to
-! KEYSRV above).
+! (F or A) when the sign of the object's position changes.  Because this
+! logic does not actually perform the change and only simulates a keypress,
+! it suffers from a race condition with actual keypresses received via the
+! keyboard interrupt; however, because this executes relatively soon after
+! the previous KEYSRV call, any error is more likely to be in the player's
+! favor, in which the player's keypress overwrites this action.
 A62F AA      		TAX
 A630 BD CF BE		LDA	TRKTAB,X		; WHICH KEY FOR SWITHING DISPLAY
 A633 85 CA   		STA	THEKEY		; SWITCH DISPLAY
@@ -3688,6 +3699,10 @@ B019 10 F6   		BPL	KEYSR1		; NEXT KEY
 B01B A0 10   		LDY	#SENWHT-SENTAB		; WHAT
 B01D 4C 23 B2		JMP	LDMESS
 B020         	KEYSR2			; KEY FOUND
+! Rather than compare against literal keyboard scancodes, these tests use
+! the index into CODCON of the pressed key (saved in register X) as a sort
+! of "virtual keycode", allowing more efficient processing since the keys
+! in CODCON are grouped according to their function.
 B020 E0 0A   		CPX	#$0A		; IMPULSE ENGINE ?
 B022 B0 1D   		BCS	KEYSR4		; NO
 B024 A5 C0   		LDA	HFLAG		; HWARP ?
@@ -5734,6 +5749,13 @@ BABA 20 40 60
 BABD 70      
              	;
              	;
+! This table lists the scancodes of all keys recognized by the program
+! (with the high two bits set, as noted by the comment near the top of the
+! program listing).  The first line is the number keys 0 through 9; the
+! second line consists of F, A, L, G, T, S, C, H, M, and P; and the single
+! byte on the third line is for the Atari key (a unique non-alphanumeric
+! key intended for special functions, much like the Windows or Command keys
+! on Windows or Mac keyboards).
 BABE         	CODCON		; USED IN KEYSRV SUBROUTINE FOR KEY CONVERT
 BABE F2 DF DE		.BYTE	$F2,$DF,$DE,$DA,$D8,$DD,$DB,$F3,$F5,$F0
 BAC1 DA D8 DD
