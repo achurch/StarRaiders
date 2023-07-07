@@ -1324,8 +1324,8 @@ A385 85 6D   		STA	TEMP3
 A387 A4 79   		LDY	NSTARS		; LAST BYTE OF STARS
 A389         	YROTA2
 A389 84 6E   		STY	TEMP4		; TEMP STORE
-! The 6502's only has add/subsract instructions which include the carry
-! bit, perhaps to simplify the hardware implementation or to reserve opcode
+! The 6502 only has add/subtract instructions which include the carry bit,
+! perhaps to simplify the hardware implementation or to reserve opcode
 ! space for future processor versions, so to implement a simple (carryless)
 ! addition, the program must first clear the carry flag with CLC if adding
 ! or set it with SEC if subtracting; this CLC/ADC or SEC/SBC pairing is a
