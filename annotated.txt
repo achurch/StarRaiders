@@ -924,8 +924,8 @@ A17D D8      		CLD
 A17E A9 02   		LDA	#RAMMAP/256
 A180 20 0F AE		JSR	CLRMP1		; CLEAR ALL RAM
              	;		LD VECTOR RAM
-! The 6502 is an 8-bit processor, so storing an address requires two
-! separate load/store pairs.
+! The 6502 is an 8-bit processor, so storing a 16-bit address requires
+! two separate load/store pairs.
 A183 A9 51   		LDA	#IRQVEC
 A185 8D 16 02		STA	VIMIRQ
 A188 A9 A7   		LDA	#IRQVEC/256
@@ -1202,7 +1202,7 @@ A2B7 8D C1 0C		STA	OLDNUM+4
 A2BA         	STOOB1
 A2BA B9 E4 B8		LDA	PHGRAF,Y
 A2BD B0 03   		BCS	STOOB8
-! The RANDOM hardware register is (as its name implies) a register which
+! The RANDOM hardware register is, as its name implies, a register which
 ! returns a (pseudo-)random value each time it is read.  The value is
 ! used here to generate the "shimmering" effect on photon torpedo shots,
 ! by randomly turning off bits in the object image.
@@ -1314,8 +1314,7 @@ A37F 30 3A   		BMI	MAIN1		; NO ROTATE IN GALACTIC CHART
 ! used a coordinate system following aircraft/spacecraft conventions, with
 ! the X axis pointing out the nose of the craft (thus "forward").  This
 ! may seem a bit unusual to modern developers accustomed to a screen-based
-! coordinate system with the Z axis pointing into or out of the display
-! (depending on handedness).
+! coordinate system with the Z axis perpendicular to the display.
              	;		YROTAT
              	;		ROTATE ALL LEFT AND RIGHT
 A381 A5 C8   		LDA	HORJOY		; HORIZ JOYSTICK ?
@@ -1324,15 +1323,16 @@ A385 85 6D   		STA	TEMP3
 A387 A4 79   		LDY	NSTARS		; LAST BYTE OF STARS
 A389         	YROTA2
 A389 84 6E   		STY	TEMP4		; TEMP STORE
-! The 6502 only has add/subtract instructions which include the carry bit,
+! The 6502 does not have any simple (carryless) add/subtract instructions;
+! only ADC (add with carry) and SBC (subtract with carry) are provided,
 ! perhaps to simplify the hardware implementation or to reserve opcode
-! space for future processor versions, so to implement a simple (carryless)
-! addition, the program must first clear the carry flag with CLC if adding
-! or set it with SEC if subtracting; this CLC/ADC or SEC/SBC pairing is a
+! space for future processor versions.  To implement a carryless operation,
+! therefore, the program must first clear the carry flag with CLC if adding
+! or set it with SEC if subtracting.  This CLC/ADC or SEC/SBC pairing is a
 ! well-known characteristic of 6502 programs.  It can also reveal something
 ! of a stylistic signature of the programmer: we see here (and throughout
-! the code) that the author of this program generally chose to clear or
-! set the carry flag before loading the first operand, thus the sequence
+! the code) that the author of this program generally chose to clear or set
+! the carry flag before loading the first operand, thus the sequence
 ! CLC/TYA/ADC here, while in other programs one may see the CLC bound more
 ! tightly to the ADC, giving a sequence like TYA/CLC/ADC.
 A38B 18      		CLC
@@ -1350,7 +1350,10 @@ A398 20 9B B6		JSR	ROHELP
 ! dodged by simply rotating it to one side, and it will continue on its
 ! original -X course past the side of ship.  Enemy photon torpedoes can be
 ! similarly dodged, but the logic for enemy torpedo movement in the THINK
-! routine includes some "homing" toward the player to counteract this.
+! routine includes some "homing" toward the player to counteract this; the
+! degree of homing varies by difficulty level, suggesting that the lack of
+! velocity rotation here was an intentional design choice rather than a
+! simple oversight.
 A39B 88      		DEY
 A39C 10 EB   		BPL	YROTA2
 A39E         	YROTA1
@@ -1394,8 +1397,10 @@ A3BD         	XMOVE1
 ! be cancelled out here, wasting computation time for no ultimate effect);
 ! effectively, player torpedoes are always fired at the same _relative_
 ! speed regardless of the _absolute_ speed of the player ship.  The
-! reasoning is less clear for enemy photon torpedoes; it may have been a
-! deliberate choice for the sake of playability or simply an oversight.
+! reasoning is less clear for enemy photon torpedoes, though as with
+! velocity rotation above, it may have been a deliberate choice for the
+! sake of playability -- especially considering that players of the time
+! would have had no experience in navigating a simulated 3D environment.
 A3BD E0 05   		CPX	#OBJNUM		; PHOTONS ?
 A3BF B0 05   		BCS	XMOVE2		; NO.
 A3C1 BD 8C 0C		LDA	GINDEX,X
@@ -1642,6 +1647,9 @@ A501 30 2B   		BMI	OBJCL6		; JMP
 A503         	OBJCL3
 A503 D5 E9   		CMP	STFLAG,X		; OBJECT ON ?
 A505 F0 E0   		BEQ	OBJCL2			; NO
+! The CMP instruction does not modify the V flag, so this BVS instruction
+! operates on the result of "BIT DISFLG" from above, avoiding the need for
+! a second test of the same value.
 A507 70 F3   		BVS	OBJCL4		; SECTOR SCAN
 A509 BC 40 0A		LDY	XPOSH,X		; INTENSITY AND GRAPHIC SIZE
 A50C 24 7B   		BIT	BASFLG		; STARBASE ?
@@ -1664,8 +1672,8 @@ A527 AC 42 0A		LDY	XPOSH+2		; ALL USE OBJ2 POSIT.
 A52A         	OBJCL8
 ! This color modulation (which creates a "glowing" effect) is applied to
 ! all objects when a starbase is present, not just the starbase itself.
-! As a result, if you shoot a photon torpedo at a starbase, the torpedo
-! graphic will also glow.
+! As a result, if you shoot a photon torpedo in a sector with a starbase,
+! the torpedo graphic will also glow.
 A52A A5 76   		LDA	BINTIM		; MODULATE STARBASE COLOR
 A52C 29 0F   		AND	#$0F
 A52E         	OBJCL6
@@ -1961,7 +1969,9 @@ A6A6 F0 1A   		BEQ	CONSR2
 ! To avoid reacting to a START or SELECT press on every frame, the code
 ! checks that neither key was pressed during the previous frame.  DEY/BPL
 ! allows testing the Y register for zeroness in 1 fewer byte than the more
-! straightforward CPY/BNE.
+! straightforward CPY/BNE: given that the value of the RESET variable is
+! always in the range $00-$03, the decremented value will only be negative
+! if the original value was zero.
 A6A8 88      		DEY
 A6A9 10 17   		BPL	CONSR2
 A6AB 85 66   		STA	TIMOUT		; RESET TIMOUT
@@ -2599,9 +2609,10 @@ A9FD 9D 97 0B		STA	YINCRE,X
 AA00 9D C8 0B		STA	ZINCRE,X
              	;
 AA03 A9 01   		LDA	#$01
-! If you say so!  (Perhaps this store was previously missing, causing some
-! of the hyperwarp stars to not be rendered because they had negative
-! coordinates.)
+! If you say so!  (As also happens in modern development, programmers
+! sometimes left tongue-in-cheek comments like this when fixing trivial
+! bugs.  Perhaps this store was previously missing, causing some of the
+! hyperwarp stars to not be rendered because they had negative coordinates.)
 AA05 9D AD 09		STA	XSIGN,X		; AND THAT FIXES THAT
 AA08 A9 63   		LDA	#99		; OFF-SCREEN
 AA0A 9D F9 0B		STA	VPOS,X
@@ -2622,9 +2633,9 @@ AA20 60      		RTS
              	;
              	;
 ! This is not a general-purpose division routine; it's specifically used
-! to divide a Y or Z coordinate (stored in TEMP.w) by the X (depth)
-! coordinate of the object whose index is in the X register, then multiply
-! by 80 to produce a screen coordinate.
+! to divide a Y or Z coordinate (a 16-bit value stored at TEMP) by the
+! X (depth) coordinate of the object whose index is in the X register,
+! then multiply by 80 to produce a screen coordinate.
 AA21         	DIVIDE
              	;	A = (TOP/BOTTOM)X80
              	;
@@ -4410,11 +4421,11 @@ B403 85 6A   		STA	TEMP
 B405 A5 6B   		LDA	TEMP1
 B407 9D E9 0E		STA	BCDCON,X
 ! Here we see a rare use of the 6502 "decimal mode" flag to set up the
-! BCD conversion table; the high (integral) byte of this 2-byte counter
-! is incremented in decimal mode so its two nibbles can be used directly
-! as digits for display.  (Decimal mode was so rarely used that some
-! implementations of the 6502 architecture, notably the Ricoh 2A03 used
-! in the Nintendo Famicom and NES systems, omitted it entirely.)
+! BCD conversion table: the high (integral) byte of this 2-byte counter
+! is incremented in decimal mode so that its two nibbles can be used
+! directly as digits for display.  (Use of decimal mode was so uncommon
+! that some implementations of the 6502 architecture, notably the Ricoh
+! 2A03 used in the Nintendo Famicom and NES systems, omitted it entirely.)
 B40A F8      		SED
 B40B 69 00   		ADC	#$00
 B40D D8      		CLD
@@ -4678,7 +4689,7 @@ B56C 85 78   		STA	JMPTIM
 ! Zylon jump, thus 1 point per half "minute" (34.2 seconds) except for the
 ! extended 1-"minute" jump period when a starbase is surrounded -- though
 ! the penalty does not apply until the player's score first changes from
-! zero (or in the rare case that it is exactly a multiple of 256).
+! zero (or in the rare case that it is exactly 256).
 B56E A5 CB   		LDA	RATING
 B570 D0 02   		BNE	TIME61
 B572 C6 CC   		DEC	RATING+1
@@ -5354,7 +5365,7 @@ B8B3 4A      		LSR	A
 B8B4 BD 40 0A		LDA	XPOSH,X
 B8B7 B0 04   		BCS	TWOCM1
              	;		NEGATIVE VALUE, TWOS COMPLEMENT
-! This is technically "ones' complement" rather than "twos' complement",
+! This is technically "one's complement" rather than "two's complement",
 ! but it only makes a difference in the relatively rare case that the low
 ! byte of the value is zero.
 B8B9 49 FF   		EOR	#$FF
