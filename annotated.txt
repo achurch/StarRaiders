@@ -4688,9 +4688,7 @@ B56C 85 78   		STA	JMPTIM
 ! taken divided by 100", suggesting a penalty of 1 point per "minute"
 ! (68.4 seconds), but as we see here, the actual penalty is 1 point per
 ! Zylon jump, thus 1 point per half "minute" (34.2 seconds) except for the
-! extended 1-"minute" jump period when a starbase is surrounded -- though
-! the penalty does not apply until the player's score first changes from
-! zero (or in the rare case that it is exactly 256).
+! extended 1-"minute" jump period when a starbase is surrounded.
 B56E A5 CB   		LDA	RATING
 B570 D0 02   		BNE	TIME61
 B572 C6 CC   		DEC	RATING+1
