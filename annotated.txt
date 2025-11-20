@@ -2047,8 +2047,9 @@ A6FB CA      		DEX
 A6FC 10 F8   		BPL	VBLNK3
              	;
              	;
-! This hardware register is a strobe which doesn't store any data, so it
-! doesn't matter that the value of A is unknown here.
+! This hardware register is a strobe (a register which does not store any
+! data, instead performing an action in response to the write operation
+! itself), so it doesn't matter that the value of A is unknown here.
 A6FE 8D 1E D0		STA	HITCLR		; RESET HITS
              	;
 A701 20 AB B2		JSR	AUDIO		; SERVICE AUDIO
@@ -2153,8 +2154,8 @@ A764 40      		RTI
 ! the attack computer display (target position and lock-on status), but it
 ! is also used to draw the targeting cross-hairs in the center of the
 ! playfield and the ship icon in the center of the sector scan display.
-! The actual subroutine entry point is in the middle of the routine to
-! optimize the loop implementation.
+! The actual subroutine entry point is in the middle of the routine in
+! order to optimize the loop implementation.
 A765         	LDINS6		; LOAD UP THE LINE
 A765 99 A4 00		STA	NUMPTS,Y
 A768 E8      		INX
@@ -4943,7 +4944,7 @@ B69B         	ROHELP
 !     K_n*R*cos(a+b) = R*cos(a) -/+ (2^-n)*R*sin(a)
 !     K_n = sqrt(1 + 2^-2n)
 !     tan(b) = 2^-n
-! n is -6, giving a rotation per frame b of ~0.895 degrees.  K_n for this
+! n is 6, giving a rotation per frame b of ~0.895 degrees.  K_n for this
 ! case is ~1.000122; the code here applies no correction for K_n, so
 ! coordinates will increase by a very small amount with each rotation.
 ! (The randomness applied to the low bits of the first input value may be
@@ -5191,10 +5192,13 @@ B7F0 60      		RTS
 ! image with a fifth Zylon group in one diagonally adjacent cell as one of
 ! the "necessary enemy positions for a starbase to be surrounded", but we
 ! can assume this was simple laziness on the part of the manual author.
-! (Another point of note is that this does not check whether the
-! surrounding cells are Zylon groups or starbases, but since the random
-! chart generator avoids putting two starbases in adjacent cells, this is
-! not a concern.)
+!
+! It is also worth noting what this subroutine does _not_ do: it does not
+! check whether the surrounding cells are Zylon groups or starbases, and
+! it does not attempt to avoid reads outside the galactic chart memory
+! array.  The random chart generator ensures that starbases are never
+! placed in adjacent cells or on the edges of the chart, so there is no
+! need to waste precious code space performing those checks.
 B7F1         	TIMHLP
              	;		HELPER ROUTINE FOR TIMERS
 B7F1 BD C8 08		LDA	CHTRAM-1,X
@@ -5407,8 +5411,8 @@ B8DE 60      		RTS
              	;
              	;
              	;
-! The program code ends here; the remainder of the source code is data
-! definitions.
+! The program code ends here; the remainder of the ROM content is
+! constant data definitions.
 
 
              	;		TABLES;
@@ -6555,10 +6559,12 @@ BF73         	PHOYPS		; YPOSH FOR PHOTON
 BF73 FF 01   		.BYTE	$FF,1
              	;
 ! These two tables (PHPOST and PHPOSB) define the XPOSH bounds within
-! which a torpedo/enemy collision will be considered an actual collision.
-! The table is indexed by the high 7 bits of the enemy X coordinate.  As
-! can be seen, the bounds are fairly lenient; allowing (for example) a
-! torpedo as far away as +$0BFF to hit an enemy at point-blank distance.
+! which a collision between on-screen torpedo and enemy objects will be
+! considered a collision in 3D space.  The table is indexed by the enemy
+! X coordinate in units of $0200, treating an X coordinate of $1000 or
+! greater as $0FFF.  As can be seen, the bounds are fairly lenient,
+! allowing (for example) a torpedo as far away as $0BFF to hit an enemy
+! at point-blank distance.
 BF75         	PHPOST		; BOUNDS IN HITZYL
 BF75 0C 0C 0C		.BYTE	$C,$C,$C,$C,$E,$E,$E,$20
 BF78 0C 0E 0E
@@ -6709,7 +6715,7 @@ BFFB         	PHASE5
              	;		CARTRIDGE OPERATING CODES
              	;
 ! These final 4 bytes of ROM are used by the Atari operating system to
-! locate the entry point of the cartrige program.  (Technically, this
+! locate the entry point of the cartridge program.  (Technically, this
 ! trailer is 6 bytes long, but the first 2 bytes are unused if bit $04 of
 ! the third-last byte, here $80, is clear.)
              		*=$BFFC
@@ -6719,6 +6725,8 @@ BFFE 4A A1   		.WORD	INIT		; START ADDR POINTER
              	;
 C000         	PHASE9
              	;
+! This marks the end of all ROM data.  The remainder of the source code
+! is address symbol definitions for runtime data stored in RAM.
 
 
              	;
@@ -6727,6 +6735,12 @@ C000         	PHASE9
              	;			RAM MAP
              		*=$280
 0280         	RAMMAP			; MISC RAM STORAGE
+! This region is reserved as buffers for the ANTIC display list and
+! player/missile object graphics.  In particular, the player and missile
+! objects require a 256-byte-aligned buffer because ANTIC has only a
+! single-byte register for the high 8 bits of the address (in fact, it has
+! only a single register for all five objects, thus requiring 1280 bytes
+! of contiguous space).
 0280         	DISPLY			; DISPLAY LIST RAM
              		*=*+128		; SEE EQUATES FOR INTERNAL LABELS
              	;
@@ -6799,16 +6813,18 @@ C000         	PHASE9
              		*=*+1
              	;		NEXT LINE
 ! This is a similar text buffer for the galactic chart status panel, and
-! similarly to DKILL/DENERG/DCSTOR, DAMAGE and DSDATE serve a dual purpose
-! as game state storage.  The DAMAGE field deserves a special mention: the
-! system damage state is encoded in the high 2 bits of the character byte
-! ($80 when damaged, $C0 when destroyed), leaving the low 6 bits (the
-! letter representing the associated ship system) constant, and the buffer
-! is drawn using an ANTIC display mode which takes the two high bits of
-! each byte as a color palette index, so the damage state is reflected by
-! letter colors without any additional work.  Furthermore, the high 2 bits
-! of each byte can be easily tested with a BIT instruction, so logic which
-! needs to check the damage state of a system can do so without expensive
+! similarly to DKILL/DENERG/DCSTOR, DAMAGE and DSDATE serve the additional
+! purpose of game state storage.
+!
+! The DAMAGE field deserves a special mention:  The system damage state is
+! encoded in the high 2 bits of the character byte ($80 when damaged, $C0
+! when destroyed), leaving the low 6 bits (the letter representing the
+! associated ship system) constant.  The buffer as a whole is drawn using
+! an ANTIC display mode which takes the two high bits of each byte as a
+! color palette index, so the damage state is reflected by letter colors
+! without any additional work.  Furthermore, the high 2 bits of each byte
+! can be easily tested with a single BIT instruction, so logic which needs
+! to check the damage state of a system can do so without expensive
 ! comparisons or helper subroutines.  All in all, a very clever way to
 ! store game state!
 0971         	DGALAC			; GALACTIC CHART INFO
